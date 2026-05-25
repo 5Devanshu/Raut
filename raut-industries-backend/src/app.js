@@ -1,5 +1,6 @@
 const express = require('express')
 const cors = require('cors')
+const morgan = require('morgan')
 const errorHandler = require('./middlewares/error.middleware')
 
 const authRoutes = require('./modules/auth/auth.routes')
@@ -12,11 +13,13 @@ const billRoutes = require('./modules/bills/bills.routes')
 const employeeRoutes = require('./modules/employees/employees.routes')
 const attendanceRoutes = require('./modules/attendance/attendance.routes')
 const reportRoutes = require('./modules/reports/reports.routes')
+const bmsRoutes = require('./modules/bms/bms.routes')
 
 const app = express()
 
 app.use(cors())
 app.use(express.json())
+app.use(morgan('dev'))
 
 app.get('/health', (req, res) => res.json({ status: 'ok', project: 'Raut Industries' }))
 
@@ -30,6 +33,7 @@ app.use('/api/bills', billRoutes)
 app.use('/api/employees', employeeRoutes)
 app.use('/api/attendance', attendanceRoutes)
 app.use('/api/reports', reportRoutes)
+app.use('/api/bms', bmsRoutes)
 
 // 404 handler for undefined routes
 app.use((req, res, next) => {
