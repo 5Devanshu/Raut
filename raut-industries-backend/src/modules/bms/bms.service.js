@@ -21,14 +21,27 @@ const parseExpiry = (jwt) => {
 const getToken = async () => {
   if (_token && Date.now() < _expiresAt - 300_000) return _token
   console.log('🔐 BMS: authenticating…')
-  const res  = await http.post('/v1/auth/login', {
-    email:    process.env.BMS_EMAIL,
-    password: process.env.BMS_PASSWORD,
-  })
-  _token     = res.data?.data?.access_token
-  _expiresAt = parseExpiry(_token)
-  console.log('✅ BMS: token acquired, expires', new Date(_expiresAt).toISOString())
-  return _token
+  
+  const bmsEmail = process.env.BMS_EMAIL
+  const bmsPassword = process.env.BMS_PASSWORD
+  
+  if (!bmsEmail || !bmsPassword) {
+    throw new Error('BMS_EMAIL and BMS_PASSWORD must be configured')
+  }
+  
+  try {
+    const res = await http.post('/v1/auth/login', {
+      email: bmsEmail,
+      password: bmsPassword,
+    })
+    _token     = res.data?.data?.access_token
+    _expiresAt = parseExpiry(_token)
+    console.log('✅ BMS: token acquired, expires', new Date(_expiresAt).toISOString())
+    return _token
+  } catch (err) {
+    console.error('❌ BMS: authentication failed', err.response?.data || err.message)
+    throw err
+  }
 }
 
 const proxyToBMS = async ({ method, path, params, data }, retry = true) => {
@@ -43,6 +56,13 @@ const proxyToBMS = async ({ method, path, params, data }, retry = true) => {
     })
     return res.data
   } catch (err) {
+    console.error(`❌ BMS API Error [${err.response?.status || 'UNKNOWN'}]:`, {
+      path: `/v1${path}`,
+      status: err.response?.status,
+      message: err.response?.data?.message || err.message,
+      data: err.response?.data,
+    })
+    
     if (err.response?.status === 401 && retry) {
       _token = null; _expiresAt = 0
       return proxyToBMS({ method, path, params, data }, false)
